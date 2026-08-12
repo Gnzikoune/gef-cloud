@@ -1,0 +1,26 @@
+{
+  "projectName": "GEF Cloud",
+  "projectType": "saas",
+  "version": "0.1.0",
+  "features": {
+    "dashboard": true,
+    "doraMetrics": true,
+    "geftegration": true,
+    "githubAuth": false,
+    "multiProject": false,
+    "redisCache": false,
+    "postgresql": false
+  },
+  "techStack": {
+    "frontend": "Next.js 16 + React 19 + TypeScript",
+    "backend": "Next.js API Routes",
+    "database": "Prisma v6 + SQLite",
+    "auth": "NextAuth.js (planned)"
+  },
+  "governance": {
+    "cursorrules": true,
+    "windsurfrules": true,
+    "hooks": false,
+    "githubActions": false
+  }
+}
