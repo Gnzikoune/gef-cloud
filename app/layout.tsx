@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthProvider from "./AuthProvider";
 
 export const metadata: Metadata = {
   title: "GEF Cloud — Dashboard de métriques DORA",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
