@@ -17,11 +17,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Créer ou récupérer le projet
+    // Créer ou récupérer le projet avec ID constant pour MVP
     const project = await prisma.project.upsert({
-      where: { githubRepo },
-      update: { name: projectName, githubOwner },
+      where: { id: "default-project-id" },
+      update: { name: projectName, githubRepo, githubOwner },
       create: {
+        id: "default-project-id",
         name: projectName,
         githubRepo,
         githubOwner,

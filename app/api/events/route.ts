@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getScanProgress } from "@/lib/scan-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -51,20 +50,43 @@ export async function GET(req: NextRequest) {
       // Polling pour détecter les changements de métriques et de progression
       const interval = setInterval(async () => {
         try {
-          // Vérifier la progression du scan
-          const scanProgress = getScanProgress(projectId);
-          if (scanProgress) {
+          // Vérifier la progression du scan depuis la base de données
+          const latestScan = await prisma.scan.findFirst({
+            where: { projectId },
+            orderBy: { startedAt: "desc" },
+          });
+
+          if (latestScan && latestScan.status === "running") {
+            const elapsedSeconds = Math.round(
+              (Date.now() - latestScan.startedAt.getTime()) / 1000
+            );
+
             sendEvent({
               type: "scan-progress",
               data: {
-                status: scanProgress.status,
-                currentStep: scanProgress.currentStep,
-                totalFiles: scanProgress.totalFiles,
-                scannedFiles: scanProgress.scannedFiles,
-                progressPercentage: Math.round(
-                  (scanProgress.scannedFiles / scanProgress.totalFiles) * 100
-                ),
-                elapsedSeconds: Math.round((Date.now() - scanProgress.startTime) / 1000),
+                status: latestScan.status,
+                currentStep: latestScan.currentStep || "Initialisation...",
+                totalFiles: latestScan.totalFiles || 17,
+                scannedFiles: latestScan.scannedFiles || 0,
+                progressPercentage: latestScan.progressPercentage || 0,
+                elapsedSeconds,
+              },
+            });
+          } else if (latestScan && (latestScan.status === "completed" || latestScan.status === "failed")) {
+            // Envoyer l'état final une seule fois
+            sendEvent({
+              type: "scan-progress",
+              data: {
+                status: latestScan.status,
+                currentStep: latestScan.currentStep || "Terminé",
+                totalFiles: latestScan.totalFiles || 17,
+                scannedFiles: latestScan.scannedFiles || 17,
+                progressPercentage: latestScan.progressPercentage || 100,
+                elapsedSeconds: latestScan.completedAt
+                  ? Math.round(
+                      (latestScan.completedAt.getTime() - latestScan.startedAt.getTime()) / 1000
+                    )
+                  : 0,
               },
             });
           }
