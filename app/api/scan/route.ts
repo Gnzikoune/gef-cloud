@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { getServerSession } from "next-auth";
 
 const execAsync = promisify(exec);
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { projectName, githubRepo, githubOwner } = body;
 
@@ -17,44 +24,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Créer ou récupérer le projet avec ID constant pour MVP
+    // Créer ou mettre à jour le projet avec l'ID githubRepo
     let project = await prisma.project.findUnique({
-      where: { id: "default-project-id" },
+      where: { githubRepo },
     });
 
     if (project) {
       // Mettre à jour le projet existant
       project = await prisma.project.update({
-        where: { id: "default-project-id" },
-        data: { name: projectName, githubRepo, githubOwner },
+        where: { githubRepo },
+        data: {
+          name: projectName,
+          githubOwner,
+          accessToken: session.accessToken as string,
+        },
       });
     } else {
-      // Vérifier si un projet existe déjà avec ce githubRepo
-      const existingProject = await prisma.project.findUnique({
-        where: { githubRepo },
-      });
-
-      if (existingProject) {
-        // Supprimer d'abord les dépendances (scans et métriques)
-        await prisma.scan.deleteMany({
-          where: { projectId: existingProject.id },
-        });
-        await prisma.metrics.deleteMany({
-          where: { projectId: existingProject.id },
-        });
-        // Puis supprimer l'ancien projet
-        await prisma.project.delete({
-          where: { githubRepo },
-        });
-      }
-
-      // Créer le nouveau projet avec ID constant
+      // Créer le nouveau projet
       project = await prisma.project.create({
         data: {
-          id: "default-project-id",
           name: projectName,
           githubRepo,
           githubOwner,
+          accessToken: session.accessToken as string,
         },
       });
     }
@@ -76,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      projectId: project.id,
+      projectId: project.githubRepo,
       scanId: scan.id,
       message: "Scan initiated",
     });

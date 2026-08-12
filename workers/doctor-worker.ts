@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { calculateDORAMetrics } from "../lib/dora-metrics";
 
 const execAsync = promisify(exec);
 
@@ -28,8 +29,8 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Configuration de l'environnement...",
-        progressPercentage: 6,
-        totalFiles: 17,
+        progressPercentage: 5,
+        totalFiles: 20,
         scannedFiles: 1,
       },
     });
@@ -40,7 +41,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Analyse des fichiers de gouvernance...",
-        progressPercentage: 18,
+        progressPercentage: 15,
         scannedFiles: 3,
       },
     });
@@ -51,7 +52,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Vérification des hooks Git...",
-        progressPercentage: 29,
+        progressPercentage: 25,
         scannedFiles: 5,
       },
     });
@@ -62,7 +63,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Validation des workflows CI/CD...",
-        progressPercentage: 41,
+        progressPercentage: 35,
         scannedFiles: 7,
       },
     });
@@ -73,7 +74,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Exécution de npx create-gef doctor...",
-        progressPercentage: 59,
+        progressPercentage: 50,
         scannedFiles: 10,
       },
     });
@@ -89,7 +90,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
       where: { id: scan.id },
       data: {
         currentStep: "Parsing des résultats...",
-        progressPercentage: 71,
+        progressPercentage: 60,
         scannedFiles: 12,
       },
     });
@@ -98,13 +99,47 @@ async function runDoctorScan(projectId: string): Promise<void> {
     // Parser les résultats (simplifié pour MVP)
     const doctorResult = parseDoctorOutput(stdout);
 
-    // Étape 7: Sauvegarde des métriques
+    // Étape 7: Calcul des métriques DORA
+    await prisma.scan.update({
+      where: { id: scan.id },
+      data: {
+        currentStep: "Calcul des métriques DORA...",
+        progressPercentage: 70,
+        scannedFiles: 14,
+      },
+    });
+
+    // Récupérer le projet pour obtenir les infos GitHub
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    let doraMetrics = {
+      deploymentFrequency: 0,
+      leadTimeForChanges: 0,
+      changeFailureRate: 0,
+      timeToRestore: 0,
+    };
+
+    if (project && project.accessToken) {
+      try {
+        doraMetrics = await calculateDORAMetrics(
+          project.githubOwner,
+          project.githubRepo,
+          project.accessToken
+        );
+      } catch (error) {
+        console.error("Error calculating DORA metrics:", error);
+      }
+    }
+
+    // Étape 8: Sauvegarde des métriques
     await prisma.scan.update({
       where: { id: scan.id },
       data: {
         currentStep: "Sauvegarde des métriques...",
-        progressPercentage: 82,
-        scannedFiles: 14,
+        progressPercentage: 85,
+        scannedFiles: 17,
       },
     });
 
@@ -113,21 +148,29 @@ async function runDoctorScan(projectId: string): Promise<void> {
       update: {
         gefComplianceScore: doctorResult.score,
         gefComplianceTotal: doctorResult.total,
+        deploymentFrequency: doraMetrics.deploymentFrequency,
+        leadTimeForChanges: doraMetrics.leadTimeForChanges,
+        changeFailureRate: doraMetrics.changeFailureRate,
+        timeToRestore: doraMetrics.timeToRestore,
       },
       create: {
         projectId,
         gefComplianceScore: doctorResult.score,
         gefComplianceTotal: doctorResult.total,
+        deploymentFrequency: doraMetrics.deploymentFrequency,
+        leadTimeForChanges: doraMetrics.leadTimeForChanges,
+        changeFailureRate: doraMetrics.changeFailureRate,
+        timeToRestore: doraMetrics.timeToRestore,
       },
     });
 
-    // Étape 8: Finalisation
+    // Étape 9: Finalisation
     await prisma.scan.update({
       where: { id: scan.id },
       data: {
         currentStep: "Finalisation...",
-        progressPercentage: 94,
-        scannedFiles: 16,
+        progressPercentage: 95,
+        scannedFiles: 19,
       },
     });
     await sleep(300);
@@ -140,7 +183,7 @@ async function runDoctorScan(projectId: string): Promise<void> {
         completedAt: new Date(),
         currentStep: "Scan terminé avec succès",
         progressPercentage: 100,
-        scannedFiles: 17,
+        scannedFiles: 20,
       },
     });
 
