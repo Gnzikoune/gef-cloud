@@ -18,16 +18,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Créer ou récupérer le projet avec ID constant pour MVP
-    const project = await prisma.project.upsert({
+    let project = await prisma.project.findUnique({
       where: { id: "default-project-id" },
-      update: { name: projectName, githubRepo, githubOwner },
-      create: {
-        id: "default-project-id",
-        name: projectName,
-        githubRepo,
-        githubOwner,
-      },
     });
+
+    if (project) {
+      // Mettre à jour le projet existant
+      project = await prisma.project.update({
+        where: { id: "default-project-id" },
+        data: { name: projectName, githubRepo, githubOwner },
+      });
+    } else {
+      // Vérifier si un projet existe déjà avec ce githubRepo
+      const existingProject = await prisma.project.findUnique({
+        where: { githubRepo },
+      });
+
+      if (existingProject) {
+        // Supprimer l'ancien projet
+        await prisma.project.delete({
+          where: { githubRepo },
+        });
+      }
+
+      // Créer le nouveau projet avec ID constant
+      project = await prisma.project.create({
+        data: {
+          id: "default-project-id",
+          name: projectName,
+          githubRepo,
+          githubOwner,
+        },
+      });
+    }
 
     // Créer un scan en attente
     const scan = await prisma.scan.create({
