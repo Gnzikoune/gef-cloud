@@ -16,7 +16,8 @@ export async function calculateDORAMetrics(
 
   try {
     // Deployment Frequency: Nombre de déploiements par jour (sur les 30 derniers jours)
-    const deployments = await octokit.rest.repos.listDeployments({
+    // Note: public_repo scope n'a pas accès aux deployments, donc on utilise commits comme proxy
+    const commits = await octokit.rest.repos.listCommits({
       owner,
       repo,
       per_page: 100,
@@ -25,66 +26,64 @@ export async function calculateDORAMetrics(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentDeployments = deployments.data.filter(
-      (dep) => dep.created_at && new Date(dep.created_at) > thirtyDaysAgo
+    const recentCommits = commits.data.filter(
+      (commit) => commit.commit.committer?.date && new Date(commit.commit.committer.date) > thirtyDaysAgo
     );
 
-    const deploymentFrequency = recentDeployments.length / 30;
+    const deploymentFrequency = recentCommits.length / 30;
 
-    // Lead Time for Changes: Temps moyen entre commit et déploiement (en minutes)
-    // Pour simplifier, on utilise le temps entre le dernier commit et le dernier déploiement
-    const commits = await octokit.rest.repos.listCommits({
+    // Lead Time for Changes: Temps moyen entre commit et merge PR (en minutes)
+    // Pour les repos publics, on utilise les PRs comme proxy
+    const pullRequests = await octokit.rest.pulls.list({
       owner,
       repo,
-      per_page: 10,
+      state: "closed",
+      per_page: 50,
     });
 
-    if (commits.data.length > 0 && recentDeployments.length > 0) {
-      const lastCommit = commits.data[0];
-      const lastDeployment = recentDeployments[recentDeployments.length - 1];
+    const recentPRs = pullRequests.data.filter(
+      (pr) => pr.created_at && pr.merged_at && new Date(pr.created_at) > thirtyDaysAgo
+    );
 
-      if (lastCommit.commit.committer?.date && lastDeployment.created_at) {
-        const commitDate = new Date(lastCommit.commit.committer.date);
-        const deployDate = new Date(lastDeployment.created_at);
-        const leadTimeMinutes = (deployDate.getTime() - commitDate.getTime()) / (1000 * 60);
-        var leadTimeForChanges = leadTimeMinutes;
-      } else {
-        var leadTimeForChanges = 0;
-      }
-    } else {
-      var leadTimeForChanges = 0;
+    let leadTimeForChanges = 0;
+    if (recentPRs.length > 0) {
+      const totalLeadTime = recentPRs.reduce((sum, pr) => {
+        if (pr.created_at && pr.merged_at) {
+          const created = new Date(pr.created_at);
+          const merged = new Date(pr.merged_at);
+          return sum + (merged.getTime() - created.getTime()) / (1000 * 60);
+        }
+        return sum;
+      }, 0);
+      leadTimeForChanges = totalLeadTime / recentPRs.length;
     }
 
-    // Change Failure Rate: Taux de déploiements qui ont échoué
-    const failedDeployments = recentDeployments.filter(
-      (dep) => dep.status === "failure" || dep.status === "error"
+    // Change Failure Rate: Taux de PRs fermés sans merge (proxy pour échecs)
+    const failedPRs = pullRequests.data.filter(
+      (pr) => pr.state === "closed" && !pr.merged_at && pr.created_at && new Date(pr.created_at) > thirtyDaysAgo
     );
 
     const changeFailureRate =
-      recentDeployments.length > 0
-        ? (failedDeployments.length / recentDeployments.length) * 100
+      recentPRs.length > 0
+        ? (failedPRs.length / (recentPRs.length + failedPRs.length)) * 100
         : 0;
 
-    // Time to Restore: Temps moyen pour réparer un incident (en heures)
-    // Pour simplifier, on utilise les issues GitHub comme proxy
+    // Time to Restore: Temps moyen pour fermer une issue (en heures)
     const issues = await octokit.rest.issues.listForRepo({
       owner,
       repo,
       state: "closed",
-      labels: "bug,incident",
-      per_page: 20,
+      per_page: 50,
     });
-
-    const thirtyDaysAgoForIssues = new Date();
-    thirtyDaysAgoForIssues.setDate(thirtyDaysAgoForIssues.getDate() - 30);
 
     const recentIssues = issues.data.filter(
       (issue) =>
         issue.created_at &&
         issue.closed_at &&
-        new Date(issue.created_at) > thirtyDaysAgoForIssues
+        new Date(issue.created_at) > thirtyDaysAgo
     );
 
+    let timeToRestore = 0;
     if (recentIssues.length > 0) {
       const totalRestoreTime = recentIssues.reduce((sum, issue) => {
         if (issue.created_at && issue.closed_at) {
@@ -94,10 +93,7 @@ export async function calculateDORAMetrics(
         }
         return sum;
       }, 0);
-
-      var timeToRestore = totalRestoreTime / recentIssues.length;
-    } else {
-      var timeToRestore = 0;
+      timeToRestore = totalRestoreTime / recentIssues.length;
     }
 
     return {
