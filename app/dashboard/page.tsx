@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import RepositorySelector from "./RepositorySelector";
 
 interface ScanProgress {
   status: "running" | "completed" | "failed";
@@ -11,17 +13,31 @@ interface ScanProgress {
   elapsedSeconds: number;
 }
 
+interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  private: boolean;
+}
+
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
-  const [projectId] = useState("default-project-id");
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [projectId, setProjectId] = useState("default-project-id");
 
   // Connexion SSE pour temps réel
   useEffect(() => {
+    if (!projectId) return;
+
     const eventSource = new EventSource(`/api/events?projectId=${projectId}`);
 
     eventSource.onmessage = (event) => {
@@ -59,7 +75,19 @@ export default function DashboardPage() {
     };
   }, [projectId]);
 
+  const handleRepositorySelect = (repo: Repository) => {
+    setSelectedRepo(repo);
+    setProjectId(repo.full_name);
+    setMetrics(null);
+    setScanProgress(null);
+  };
+
   const handleScan = async () => {
+    if (!selectedRepo) {
+      setScanMessage("Veuillez d'abord sélectionner un repository");
+      return;
+    }
+
     setIsScanning(true);
     setScanProgress(null);
     setScanMessage("Initialisation du scan...");
@@ -69,9 +97,9 @@ export default function DashboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectName: "GEF Cloud",
-          githubRepo: "gef-cloud",
-          githubOwner: "Gnzikoune",
+          projectName: selectedRepo.name,
+          githubRepo: selectedRepo.name,
+          githubOwner: selectedRepo.owner.login,
         }),
       });
 
@@ -89,25 +117,43 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
+  if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Chargement des métriques...</div>
+        <div className="text-gray-600">Chargement...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Non authentifié</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">Dashboard DORA</h2>
-        <p className="mt-2 text-gray-600">Métriques d'ingénierie élite pour votre projet</p>
-        <div className="flex items-center gap-2 mt-2">
-          <span className={`px-2 py-1 text-xs font-medium rounded ${connected ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
-            {connected ? "🟢 Connecté SSE" : "⚪ Déconnecté"}
-          </span>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Dashboard DORA</h2>
+          <p className="mt-2 text-gray-600">Métriques d'ingénierie élite pour votre projet</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className={`px-2 py-1 text-xs font-medium rounded ${connected ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+              {connected ? "🟢 Connecté SSE" : "⚪ Déconnecté"}
+            </span>
+          </div>
         </div>
+        <button
+          onClick={() => signOut()}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+        >
+          Déconnexion
+        </button>
       </div>
+
+      <RepositorySelector onRepositorySelect={handleRepositorySelect} />
 
       {/* Barre de Progression du Scan */}
       {scanProgress && (
@@ -161,24 +207,32 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!metrics && !scanProgress && (
+      {!selectedRepo && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
           <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune donnée disponible</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Sélectionnez un repository
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Choisissez un repository GitHub ci-dessus pour commencer l'analyse.
+          </p>
+        </div>
+      )}
+
+      {selectedRepo && !metrics && !scanProgress && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+          <div className="text-6xl mb-4">📊</div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Aucune donnée disponible
+          </h3>
           <p className="text-gray-600 mb-6">
             Les métriques DORA s'afficheront ici après l'exécution du premier scan doctor.
           </p>
           <div className="bg-white border border-gray-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-            <h4 className="font-semibold text-gray-900 mb-2">État de l'implémentation :</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>✅ Dashboard UI avec 4 widgets DORA</li>
-              <li>✅ Installation NextAuth.js pour authentification GitHub OAuth</li>
-              <li>✅ Configuration Prisma + SQLite</li>
-              <li>✅ Worker pour exécuter les scans doctor</li>
-              <li>✅ API endpoint pour lancer les scans</li>
-              <li>✅ Server-Sent Events (SSE) pour temps réel</li>
-              <li>✅ Barre de progression temps réel</li>
-            </ul>
+            <h4 className="font-semibold text-gray-900 mb-2">
+              Repository sélectionné :
+            </h4>
+            <p className="text-sm text-gray-600">{selectedRepo.full_name}</p>
           </div>
         </div>
       )}
@@ -272,15 +326,21 @@ export default function DashboardPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-blue-900">Scanner le projet</h3>
-            <p className="text-sm text-blue-700">Exécuter npx create-gef doctor pour mettre à jour les métriques</p>
+            <h3 className="text-lg font-semibold text-blue-900">
+              Scanner le projet
+            </h3>
+            <p className="text-sm text-blue-700">
+              {selectedRepo
+                ? `Exécuter npx create-gef doctor sur ${selectedRepo.full_name}`
+                : "Sélectionnez d'abord un repository"}
+            </p>
             {scanMessage && (
               <p className="text-sm text-blue-600 mt-2">{scanMessage}</p>
             )}
           </div>
           <button
             onClick={handleScan}
-            disabled={isScanning}
+            disabled={isScanning || !selectedRepo}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isScanning ? "Scan en cours..." : "Scanner maintenant"}
