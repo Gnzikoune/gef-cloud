@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getScanProgress } from "@/lib/scan-progress";
 
 export const dynamic = "force-dynamic";
 
@@ -47,9 +48,28 @@ export async function GET(req: NextRequest) {
         sendEvent({ type: "error", data: "Erreur chargement métriques" });
       }
 
-      // Polling toutes les 5 secondes pour détecter les changements
+      // Polling pour détecter les changements de métriques et de progression
       const interval = setInterval(async () => {
         try {
+          // Vérifier la progression du scan
+          const scanProgress = getScanProgress(projectId);
+          if (scanProgress) {
+            sendEvent({
+              type: "scan-progress",
+              data: {
+                status: scanProgress.status,
+                currentStep: scanProgress.currentStep,
+                totalFiles: scanProgress.totalFiles,
+                scannedFiles: scanProgress.scannedFiles,
+                progressPercentage: Math.round(
+                  (scanProgress.scannedFiles / scanProgress.totalFiles) * 100
+                ),
+                elapsedSeconds: Math.round((Date.now() - scanProgress.startTime) / 1000),
+              },
+            });
+          }
+
+          // Vérifier les métriques
           const metrics = await prisma.metrics.findUnique({
             where: { projectId },
           });
@@ -73,7 +93,7 @@ export async function GET(req: NextRequest) {
           console.error("Erreur SSE polling:", error);
           sendEvent({ type: "error", data: "Erreur polling métriques" });
         }
-      }, 5000);
+      }, 1000); // Polling toutes les secondes pour réactivité
 
       // Nettoyage à la déconnexion
       req.signal.addEventListener("abort", () => {
