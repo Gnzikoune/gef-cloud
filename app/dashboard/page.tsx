@@ -26,6 +26,13 @@ export default function DashboardPage() {
         const data = await response.json();
         setMetrics(data.metrics);
         setLoading(false);
+      } else if (response.status === 404) {
+        // Pas de métriques disponibles - état normal
+        setMetrics(null);
+        setLoading(false);
+      } else {
+        console.error("Erreur API:", response.status);
+        setLoading(false);
       }
     } catch (error) {
       console.error("Erreur chargement métriques:", error);
