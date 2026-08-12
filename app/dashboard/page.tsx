@@ -1,4 +1,40 @@
+"use client";
+
+import { useState } from "react";
+
 export default function DashboardPage() {
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setScanMessage("Initialisation du scan...");
+
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName: "GEF Cloud",
+          githubRepo: "gef-cloud",
+          githubOwner: "Gnzikoune",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setScanMessage("Scan lancé avec succès ! Vérifiez les métriques dans quelques minutes.");
+      } else {
+        setScanMessage(`Erreur: ${data.error}`);
+      }
+    } catch (error) {
+      setScanMessage("Erreur lors du lancement du scan");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -11,17 +47,16 @@ export default function DashboardPage() {
         <div className="text-6xl mb-4">📊</div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune donnée disponible</h3>
         <p className="text-gray-600 mb-6">
-          Les métriques DORA s'afficheront ici après la configuration de l'infrastructure
-          (PostgreSQL, Redis, Worker) et l'exécution du premier scan doctor.
+          Les métriques DORA s'afficheront ici après l'exécution du premier scan doctor.
         </p>
         <div className="bg-white border border-gray-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
           <h4 className="font-semibold text-gray-900 mb-2">État de l'implémentation :</h4>
           <ul className="text-sm text-gray-600 space-y-1">
             <li>✅ Dashboard UI avec 4 widgets DORA</li>
             <li>✅ Installation NextAuth.js pour authentification GitHub OAuth</li>
-            <li>⏳ Configuration PostgreSQL + Prisma (en cours)</li>
-            <li>⏳ Configuration Redis pour le cache (en cours)</li>
-            <li>⏳ Worker pour exécuter les scans doctor (en cours)</li>
+            <li>✅ Configuration Prisma + SQLite</li>
+            <li>✅ Worker pour exécuter les scans doctor</li>
+            <li>✅ API endpoint pour lancer les scans</li>
           </ul>
         </div>
       </div>
@@ -32,9 +67,16 @@ export default function DashboardPage() {
           <div>
             <h3 className="text-lg font-semibold text-blue-900">Scanner le projet</h3>
             <p className="text-sm text-blue-700">Exécuter npx create-gef doctor pour collecter les métriques</p>
+            {scanMessage && (
+              <p className="text-sm text-blue-600 mt-2">{scanMessage}</p>
+            )}
           </div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Scanner maintenant
+          <button
+            onClick={handleScan}
+            disabled={isScanning}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isScanning ? "Scan en cours..." : "Scanner maintenant"}
           </button>
         </div>
       </div>
