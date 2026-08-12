@@ -30,6 +30,12 @@ yarn-error.log*
 prisma/dev.db
 prisma/dev.db-journal
 
+# prisma skills
+.claude/skills/prisma-*
+.windsurf/skills/prisma-*
+.agents/skills/prisma-*
+skills-lock.json
+
 # vercel
 .vercel
 
