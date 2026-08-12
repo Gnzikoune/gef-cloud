@@ -35,7 +35,14 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingProject) {
-        // Supprimer l'ancien projet
+        // Supprimer d'abord les dépendances (scans et métriques)
+        await prisma.scan.deleteMany({
+          where: { projectId: existingProject.id },
+        });
+        await prisma.metrics.deleteMany({
+          where: { projectId: existingProject.id },
+        });
+        // Puis supprimer l'ancien projet
         await prisma.project.delete({
           where: { githubRepo },
         });
