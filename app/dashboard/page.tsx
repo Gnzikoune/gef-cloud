@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import RepositorySelector from "./RepositorySelector";
+import ScanHistory from "./ScanHistory";
 
 interface ScanProgress {
   status: "running" | "completed" | "failed";
@@ -347,6 +348,9 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Historique des scans */}
+      {projectId && <ScanHistory projectId={projectId} />}
     </div>
   );
 }
