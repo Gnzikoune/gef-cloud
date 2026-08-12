@@ -7,38 +7,42 @@ export default function DashboardPage() {
   const [scanMessage, setScanMessage] = useState("");
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
   const [projectId] = useState("default-project-id");
 
-  // Charger les métriques au chargement du composant
+  // Connexion SSE pour temps réel
   useEffect(() => {
-    loadMetrics();
-    
-    // Polling toutes les 5 secondes pour mettre à jour les métriques
-    const interval = setInterval(loadMetrics, 5000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    const eventSource = new EventSource(`/api/events?projectId=${projectId}`);
 
-  const loadMetrics = async () => {
-    try {
-      const response = await fetch(`/api/metrics?projectId=${projectId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setMetrics(data.metrics);
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === "metrics") {
+        setMetrics(data.data);
         setLoading(false);
-      } else if (response.status === 404) {
-        // Pas de métriques disponibles - état normal
+      } else if (data.type === "no-metrics") {
         setMetrics(null);
         setLoading(false);
-      } else {
-        console.error("Erreur API:", response.status);
+      } else if (data.type === "error") {
+        console.error("Erreur SSE:", data.data);
         setLoading(false);
       }
-    } catch (error) {
-      console.error("Erreur chargement métriques:", error);
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("Erreur SSE:", error);
+      setConnected(false);
       setLoading(false);
-    }
-  };
+    };
+
+    eventSource.onopen = () => {
+      setConnected(true);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [projectId]);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -58,10 +62,8 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (data.success) {
-        setScanMessage("Scan lancé avec succès ! Mise à jour automatique dans quelques secondes...");
-        // Recharger les métriques après un délai
+        setScanMessage("Scan lancé avec succès ! Mise à jour temps réel via SSE...");
         setTimeout(() => {
-          loadMetrics();
           setScanMessage("");
         }, 5000);
       } else {
@@ -105,6 +107,7 @@ export default function DashboardPage() {
               <li>✅ Configuration Prisma + SQLite</li>
               <li>✅ Worker pour exécuter les scans doctor</li>
               <li>✅ API endpoint pour lancer les scans</li>
+              <li>✅ Server-Sent Events (SSE) pour temps réel</li>
             </ul>
           </div>
         </div>
@@ -137,6 +140,11 @@ export default function DashboardPage() {
       <div>
         <h2 className="text-3xl font-bold text-gray-900">Dashboard DORA</h2>
         <p className="mt-2 text-gray-600">Métriques d'ingénierie élite pour votre projet</p>
+        <div className="flex items-center gap-2 mt-2">
+          <span className={`px-2 py-1 text-xs font-medium rounded ${connected ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+            {connected ? "🟢 Connecté SSE" : "⚪ Déconnecté"}
+          </span>
+        </div>
       </div>
 
       {/* Score Global */}
