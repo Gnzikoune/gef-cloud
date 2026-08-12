@@ -35,7 +35,7 @@ export default function DashboardPage() {
           <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-green-500 rounded-full" style={{ width: '90%' }}></div>
           </div>
-          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: &gt;1/jour</p>
+          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: {">"}1/jour</p>
         </div>
 
         {/* Lead Time for Changes */}
@@ -51,7 +51,7 @@ export default function DashboardPage() {
           <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-green-500 rounded-full" style={{ width: '85%' }}></div>
           </div>
-          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: <1 heure</p>
+          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: {"<"}1 heure</p>
         </div>
 
         {/* Change Failure Rate */}
@@ -83,7 +83,7 @@ export default function DashboardPage() {
           <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-yellow-500 rounded-full" style={{ width: '60%' }}></div>
           </div>
-          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: <1 heure</p>
+          <p className="mt-2 text-xs text-gray-500">Benchmark Elite: {"<"}1 heure</p>
         </div>
       </div>
 
