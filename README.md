@@ -1,76 +1,58 @@
-# GEF Cloud — SaaS de gouvernance d'ingénierie
+# GEF Cloud — Dashboard de Métriques DORA
 
-**Dashboard de métriques DORA et gouvernance multi-projets pour les équipes IA-first**
+## 🎯 Qu'est-ce que GEF Cloud ?
 
-> Transformez le GEF d'un package npm en une plateforme SaaS de gouvernance d'ingénierie avec visualisation des métriques DORA et gestion centralisée de la conformité.
+GEF Cloud est un SaaS de gouvernance d'ingénierie qui permet aux équipes IA-first de :
+- Scanner leurs projets avec `npx create-gef doctor`
+- Visualiser les métriques DORA (Deployment Frequency, Lead Time, Change Failure Rate, Time to Restore)
+- Avoir un dashboard centralisé de conformité GEF
+- Collecter des métriques de gouvernance multi-projets
 
----
+## 🚀 Démarrage Rapide
 
-## 🎯 Vision
+```bash
+# Installer les dépendances
+npm install
 
-GEF Cloud est une plateforme SaaS de gouvernance d'ingénierie qui complète le package npm `create-gef` :
+# Lancer le serveur de développement
+npm run dev
 
-- **Package npm GEF** : Installation locale, règles et hooks (gratuit, open-source)
-- **GEF Cloud SaaS** : Dashboard DORA, gouvernance multi-projets, rapports enterprise (Freemium)
+# Lancer le serveur sur http://localhost:3000
+```
 
-## 📊 Phases de Développement
+## 📊 Dashboard DORA
 
-### Phase 1 (MVP) — Dashboard DORA
-- Dashboard de métriques DORA pour un seul projet
-- Authentification GitHub OAuth
-- Intégration avec `npx create-gef doctor`
-- Comparaison avec benchmarks industry
+Le dashboard affiche les 4 métriques DORA élite :
+1. **Deployment Frequency** : Fréquence de déploiement
+2. **Lead Time for Changes** : Temps commit → déploiement
+3. **Change Failure Rate** : Taux d'échec en production
+4. **Time to Restore** : Temps de réparation incident
 
-### Phase 2 (Growth) — Gouvernance Multi-projets
-- Gestion de plusieurs dépôts GitHub/GitLab
-- Rapports PDF/CSV exportables
-- Configuration centralisée
-- Alertes email
+## 🔧 Configuration
 
-### Phase 3 (Enterprise) — Features Enterprise
-- SSO (Okta, Auth0, Azure AD)
-- RBAC (Role-Based Access Control)
-- API REST pour intégrations
-- SOC2 Type II compliance
+### Variables d'Environnement
+- `DATABASE_URL` : URL de connexion base de données
+- `GITHUB_CLIENT_ID` : GitHub OAuth Client ID
+- `GITHUB_CLIENT_SECRET` : GitHub OAuth Client Secret
+- `NEXTAUTH_SECRET` : Secret NextAuth.js
 
 ## 🏗️ Architecture
 
-```
-gef-cloud/
-├── apps/
-│   ├── web/                 ← Frontend Next.js (Dashboard)
-│   └── api/                 ← Backend Node.js (API, Workers)
-├── packages/
-│   ├── database/            ← Shared database schemas
-│   ├── shared/              ← Shared utilities
-│   └── ui/                  ← Shared UI components
-├── workers/
-│   └── scanner/             ← Worker pour exécuter les scans doctor
-└── docs/
-    └── adr/                 ← Architecture Decision Records
-```
+- **Frontend** : Next.js 16, React 19, TypeScript, Tailwind CSS
+- **Backend** : Next.js API Routes
+- **Database** : Prisma v6 + SQLite (dev) / PostgreSQL (prod)
+- **Authentification** : NextAuth.js avec GitHub OAuth
+- **Worker** : TypeScript worker pour exécuter `npx create-gef doctor`
 
-## 📦 Stack Technique
+## � Phase Actuelle
 
-- **Frontend** : Next.js 14 (App Router), Tailwind CSS, shadcn/ui
-- **Backend** : Node.js, Express ou Next.js API Routes
-- **Database** : PostgreSQL (Prisma ORM), Redis (cache)
-- **Auth** : NextAuth.js (GitHub, Google OAuth)
-- **Hosting** : Vercel (frontend) + Railway/Render (backend + database)
-
-## 💰 Business Model
-
-- **Free** : Package npm + dashboard basique (1 projet)
-- **Pro ($10/dev/mois)** : Dashboard DORA complet + multi-projets
-- **Enterprise ($500/team/mois)** : SSO, RBAC, API, support dédié
+**Phase 1 MVP** : Dashboard DORA + intégration GEF doctor + scan worker
 
 ## 🔗 Liens
 
-- **Package npm GEF** : https://github.com/Gnzikoune/GEF
-- **Documentation ADR** : docs/explanation/adr/
-- **Spec** : specs/spec-gef-cloud.md
-- **Plan** : specs/plan-gef-cloud.md
+- **Repository GEF original** : https://github.com/Gnzikoune/GEF
+- **Documentation GEF** : Voir le repository GEF pour le Engineering Playbook complet
 
----
+## 📝 Licence
 
-*Conforme au ENGINEERING_PLAYBOOK.md et à la méthodologie AI SDD*
+Ce projet fait partie de l'écosystème GEF et suit les mêmes principes de gouvernance d'ingénierie.

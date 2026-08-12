@@ -1,0 +1,91 @@
+# 🛡️ GUARDIAN ENGINEERING FRAMEWORK (GEF) — RÈGLES POUR GEF CLOUD
+# Référence absolue : ENGINEERING_PLAYBOOK.md du repository Framework
+# Ce fichier est lu nativement par Cursor, Windsurf, et GitHub Copilot.
+
+---
+
+## § 0. CONTEXTE SPÉCIFIQUE GEF CLOUD
+
+GEF Cloud est un SaaS de gouvernance d'ingénierie avec dashboard de métriques DORA. 
+Ce n'est PAS un générateur d'application — c'est une couche de gouvernance au-dessus de projets existants.
+
+### Phase du projet
+**R&D / Dev Contractuel** : Le code suit les règles GEF, mais l'infrastructure peut évoluer rapidement.
+
+---
+
+## § 1. CLEAN CODE — HARD LIMITS
+
+- **Fonctions / Méthodes** : 50 lignes max
+- **Paramètres** : 4 arguments max
+- **Complexité Cyclomatique** : 10 chemins logiques max
+- **Nesting** : 3 niveaux max
+- **Composants UI** : 150 lignes max
+- **Fichiers** : 300 lignes max
+
+### Conventions de Nommage
+- **Fichiers / Dossiers** : `kebab-case`
+- **Classes / Composants** : `PascalCase`
+- **Variables / Fonctions** : `camelCase`
+- **Constantes Globales** : `UPPER_SNAKE_CASE`
+
+---
+
+## § 2. ARCHITECTURE
+
+- **Feature-Sliced Design** : Organiser par fonctionnalité métier
+  - ✅ `/features/dashboard/`, `/features/auth/`, `/features/metrics/`
+  - ❌ `/controllers`, `/models`, `/views`
+- **SRP** : Une classe/fonction ne fait qu'une seule chose
+
+---
+
+## § 3. SÉCURITÉ
+
+- **Zero Trust** : Validation stricte des entrées (Zod/Joi)
+- **Fail-Safe Defaults** : Tout accès refusé par défaut
+- **Protection SQLi** : Requêtes paramétrées OBLIGATOIRES (Prisma)
+- **Protection XSS** : Encodage des données à la sortie
+- **Secrets** : Toujours via `.env`. JAMAIS hardcodés.
+
+---
+
+## § 4. STRATÉGIE GIT
+
+- **Branche `main` = intouchable** : Pushs directs STRICTEMENT INTERDITS
+- **Branches courtes** : `feat/xxx`, `fix/xxx`
+- **Pull Requests obligatoires** : Tout code passe par une PR
+- **Conventional Commits** : `type: description (#ticket)`
+
+---
+
+## § 5. TECHNOLOGIES GEF CLOUD
+
+- **Frontend** : Next.js 16, React 19, TypeScript, Tailwind CSS
+- **Backend** : Next.js API Routes, Prisma v6, SQLite
+- **Authentification** : NextAuth.js avec GitHub OAuth
+- **Database** : SQLite (développement), PostgreSQL (production)
+- **Worker** : TypeScript worker pour exécuter `npx create-gef doctor`
+
+---
+
+## § 6. MÉTRIQUES DORA
+
+Le dashboard affiche les 4 métriques DORA élite :
+- **Deployment Frequency** : Fréquence de déploiement
+- **Lead Time for Changes** : Temps commit → déploiement
+- **Change Failure Rate** : Taux d'échec en production
+- **Time to Restore** : Temps de réparation incident
+
+---
+
+## § 7. INTEGRATION GEF
+
+GEF Cloud utilise le package `create-gef` pour :
+- Scanner les projets via `npx create-gef doctor`
+- Calculer le score de conformité GEF
+- Fournir des métriques de gouvernance
+
+---
+
+*Ce fichier est adapté spécifiquement pour GEF Cloud SaaS.*
