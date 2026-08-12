@@ -168,8 +168,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 function parseDoctorOutput(output: string): DoctorResult {
-  // Parser simplifié pour MVP - à améliorer selon le format réel de doctor
-  const scoreMatch = output.match(/Score:\s*(\d+)\/(\d+)/);
+  // Parser le format réel du doctor: "Score de Conformité : 14/17 (82%)"
+  const scoreMatch = output.match(/Score de Conformité\s*:\s*(\d+)\/(\d+)/);
   
   if (scoreMatch) {
     return {
